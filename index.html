@@ -84,7 +84,7 @@ input,select{font:inherit;width:100%;padding:10px;border-radius:10px;border:2px 
 <button style="background:#7c3aed" onclick="go('paper')">📝 Paper Maker</button>
 <button style="background:#0d9488" onclick="go('sim')">🧬 Simulations</button>
 <button style="background:#be185d" onclick="go('scan')">📷 Scanner</button></nav>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script>
 const $=s=>document.querySelector(s),app=$('#app');
 const ST=(k,v)=>{try{if(v===undefined)return JSON.parse(localStorage.getItem(k));localStorage.setItem(k,JSON.stringify(v))}catch(e){return null}};
@@ -95,7 +95,7 @@ const UR=[['ا',[['🥭','آم'],['🍎','انار'],['🍇','انگور']]],['�
 const SCI=[['🌱',[['🌱','plant'],['💧','water'],['☀️','sun']]],['🐾',[['🐶','dog'],['🐦','bird'],['🐟','fish']]],['🌦️',[['☁️','cloud'],['🌧️','rain'],['🌈','rainbow']]]];
 const GK=[['🎨',[['🔴','red'],['🟡','yellow'],['🟢','green']]],['🍓',[['🍌','banana'],['🍊','orange'],['🍓','strawberry']]],['🦁',[['🦁','lion'],['🐘','elephant'],['🐒','monkey']]]];
 const NW=['zero','one','two','three','four','five','six','seven','eight','nine','ten'];
-function topics(b){const a=tps(b);if(b.k===undefined)return a;const h=Math.ceil(a.length/2);return b.k?a.slice(h):a.slice(0,h)}
+function topics(b){if(b.tp)return b.tp;const a=tps(b);if(b.k===undefined)return a;const h=Math.ceil(a.length/2);return b.k?a.slice(h):a.slice(0,h)}
 function tps(b){const s=b.s,g=b.g;if(s=='English')return g<3?ABC:WF;if(s=='Urdu')return UR;if(s=='Science')return SCI;if(s=='GK')return GK;
  const r=[];for(let i=1;i<=6;i++){if(g<3)r.push([String(i),[['⭐'.repeat(i),NW[i]]]]);else{const a=i+g,c=i+1;r.push([a+' + '+c,[['🔵'.repeat(a),NW[a]||String(a)],['🟠'.repeat(c),NW[c]||String(c)],['🟢'.repeat(Math.min(a+c,10)),NW[a+c]||String(a+c)]]])}}return r}
 let books=[];G.forEach((g,gi)=>Object.keys(S).forEach(s=>[0,1].forEach(k=>books.push({id:gi+'-'+s+'-'+k,g:gi,s,k,title:'NJ Smart '+s+' Book '+(k+1)+' – '+g[0]}))));
@@ -203,5 +203,11 @@ m.querySelector('#gq').onclick=()=>{const link=AR().base+'?b='+f.bk.id+'&p='+(F.
 m.querySelector('#dq').onclick=()=>{const c=m.querySelector('#qq canvas');if(!c){toast('Pehle Generate dabayein');return}const a=document.createElement('a');a.href=c.toDataURL('image/png');a.download='nj-smart-qr.png';a.click()}}
 function arSet(){const a=AR(),m=modal('<h2>AR / QR settings</h2><p class="note">Base link: aapki website ka link (domain). Hotspot positions QR ke size mein hain (x, y): QR ke centre se.</p><label>Base link<input id="ab" value="'+esc(a.base)+'"></label>'+[0,1,2].map(j=>`<div class="fl"><label>Picture ${j+1} x<input id="ax${j}" type="number" step="0.5" value="${a.h[j][0]}"></label><label>y<input id="ay${j}" type="number" step="0.5" value="${a.h[j][1]}"></label></div>`).join('')+'<br><button class="btn" id="as">Save</button>');
 m.querySelector('#as').onclick=()=>{ST('ar',{base:m.querySelector('#ab').value.trim(),h:[0,1,2].map(j=>[+m.querySelector('#ax'+j).value,+m.querySelector('#ay'+j).value])});m.remove();toast('Settings save ✓')}}
-const qs=new URLSearchParams(location.search);if(qs.get('b')&&books.find(x=>x.id==qs.get('b')))reader(qs.get('b'),+qs.get('p')||0);else home();
+const SB_URL='https://mwaengpvsscleolbxuzk.supabase.co',SB_KEY='sb_publishable_hD9tZMLqMuvu_B1njdYT9g_4Tk-tkj2';
+let sb=null,USER=null;try{sb=supabase.createClient(SB_URL,SB_KEY)}catch(e){}
+async function loadCloud(){if(!sb)return;try{const{data:bs}=await sb.from('books').select('*'),{data:ps}=await sb.from('book_pages').select('*').order('page_no');(bs||[]).forEach(b=>{if(books.find(x=>x.id==b.id))return;const gi=G.findIndex(g=>g[0]==b.grade);if(gi<0||!S[b.subject])return;books.push({id:b.id,g:gi,s:b.subject,title:b.title,tp:(ps||[]).filter(p=>p.book_id==b.id).map(p=>[p.letter,p.items||[],1])})})}catch(e){toast('Cloud books load nahi hui')}}
+function addOut(){if($('#lo')||!USER)return;const b=document.createElement('button');b.id='lo';b.className='ib';b.textContent='Logout';b.onclick=async()=>{await sb.auth.signOut();location.reload()};document.querySelector('header').append(b)}
+async function start(){await loadCloud();addOut();const qs=new URLSearchParams(location.search);if(qs.get('b')&&books.find(x=>x.id==qs.get('b')))reader(qs.get('b'),+qs.get('p')||0);else home()}
+function loginUI(){app.innerHTML='<div class="ch" style="max-width:420px;margin:30px auto"><h2 style="text-align:center">🎓 NJ Smart Learning</h2><input id="em" type="email" placeholder="Email"><input id="pw" type="password" placeholder="Password"><button class="btn" id="li" style="width:100%">Login</button><p style="text-align:center"><button class="btn g" id="gs">Guest – bina login dekhein</button></p></div>';$('#li').onclick=async()=>{const{data,error}=await sb.auth.signInWithPassword({email:$('#em').value.trim(),password:$('#pw').value});if(error){toast('Login nahi hua: '+error.message);return}USER=data.user;start()};$('#gs').onclick=()=>start()}
+(async()=>{if(!sb){start();return}try{const{data}=await sb.auth.getSession();if(data.session){USER=data.session.user;start()}else loginUI()}catch(e){start()}})();
 </script></body></html>
